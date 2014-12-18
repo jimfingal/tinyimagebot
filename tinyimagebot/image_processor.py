@@ -8,10 +8,12 @@ import json
 
 from models import SimpleTweet
 
-small_size = 50
-tiny_size = 20
-very_tiny_size = 10
-extremely_tiny_size = 1
+size_map = {
+    'tiny': ('tiny', 50),
+    'verytiny': ('verytiny', 20),
+    'extremelytiny': ('extremelytiny', 10),
+    'miniscule': ('miniscule', 1)
+}
 
 def get_image_from_url(url):
     r = requests.get(url)
@@ -36,14 +38,29 @@ def should_process_image(status):
 
 def get_image_size(status):
 
-    if 'tiny' in status.hashtags:
-        return tiny_size
-    elif 'verytiny' in status.hashtags:
-        return very_tiny_size
-    elif 'extremelytiny' in status.hashtags:
-        return extremely_tiny_size
-    else:
-        return small_size
+    for hashtag in status.hashtags:
+        size = size_map.get(hashtag)
+        if size:
+            return size
+
+    return size_map.get('tiny')
+
+def get_hashtag_message(status):
+    size_name, size = get_image_size(status)
+    return "#" + size_name
+
+
+def get_base_message(status):
+    user_from = status.sender_screen_name
+    msg = ".@" + user_from + " Your tiny image is ready"
+    return msg
+
+
+def get_message(status):
+    base_message = get_base_message(status)
+    hashtag_message = get_hashtag_message(status)
+    message = base_message + ": " + hashtag_message
+    return message
 
 
 def process_image(status):
@@ -51,16 +68,18 @@ def process_image(status):
     logging.info("Processing URL: %s" % status.media)
     logging.info("With hashtags: %s" % status.hashtags)
     img = get_image_from_url(status.media)
-    size = get_image_size(status)
+    size_name, size = get_image_size(status)
 
     logging.info("Size: %s" % size)
     resized = resize_image(img, size)
 
-    # TODO -- tweet it
-    resized.save('tmp.jpg')
+    img_out = get_image_output(resized)
+    message = get_message(status)
+
+    return img_out
 
 
-def run(pubsub, status_channel):
+def run(twitter, pubsub, status_channel):
 
     logging.info("Subscribing to channel: %s" % status_channel)
     pubsub.subscribe(status_channel)

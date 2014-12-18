@@ -279,5 +279,48 @@ class TestImageProc(unittest2.TestCase):
         status = SimpleTweet(self.msg_image)
         self.assertTrue(image_processor.should_process_image(status))
 
+
+class MockStatus(object):
+
+    def __init__(self, hashtag=None, screen_name=None):
+        self.hashtags = set([hashtag])
+        self.sender_screen_name = screen_name
+
+
+class TestMessageGeneration(unittest2.TestCase):
+
+    def test_default_image_name(self):
+
+        status = MockStatus()
+        size_name, size = image_processor.get_image_size(status)
+        self.assertEqual(size_name, 'tiny')
+
+    def test_default_image_size(self):
+
+        status = MockStatus()
+        size_name, size = image_processor.get_image_size(status)
+        self.assertEqual(size, 50)
+
+    def test_image_size(self):
+        status = MockStatus(hashtag='verytiny')
+        size_name, size = image_processor.get_image_size(status)
+        self.assertEqual(size_name, 'verytiny')
+
+    def test_hashtag_message(self):
+        status = MockStatus(hashtag='verytiny')
+        msg = image_processor.get_hashtag_message(status)
+        self.assertEqual(msg, '#verytiny')
+
+    def test_get_base_message(self):
+
+        status = MockStatus(screen_name='testname')
+        msg = image_processor.get_base_message(status)
+        self.assertEqual(msg, ".@testname Your tiny image is ready")
+
+    def test_get_message(self):
+        status = MockStatus(hashtag='verytiny', screen_name='testname')
+        msg = image_processor.get_message(status)
+        self.assertEqual(msg, ".@testname Your tiny image is ready: #verytiny")
+
 if __name__ == '__main__':
     unittest2.main()

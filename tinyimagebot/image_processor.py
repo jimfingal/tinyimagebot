@@ -86,6 +86,16 @@ def post_update(twython, img_path, message):
         upload_response = twython.upload_media(media=image_file)
         logging.info("Uploaded as media ID %s. Updating status." % upload_response)
 
+        media_rate_limit = twython.get_lastfunction_header('X-MediaRateLimit-Limit')
+        media_rate_remaining  = twython.get_lastfunction_header('X-MediaRateLimit-Remaining')
+        media_rate_reset  = twython.get_lastfunction_header('X-MediaRateLimit-Reset')
+
+        logging.info("Media rate limits: %s :: %s :: %s" % (
+                media_rate_limit, 
+                media_rate_remaining,
+                media_rate_reset
+        ))
+
         media_id = upload_response['media_id']
         twython.update_status(status=message, media_ids=[media_id])
 
@@ -117,4 +127,4 @@ def run(twython, pubsub, status_channel):
         else:
             logging.info("Not processing image")
 
-        time.sleep(60)
+        time.sleep(120)

@@ -11,6 +11,8 @@ access_token_secret = os.environ.get(app_name + '_ACCESS_TOKEN_SECRET')
 
 app_screen_name  = os.environ.get(app_name + '_SCREEN_NAME')
 
+redis_url = os.getenv(app_name + '_REDIS_URL', 'redis://localhost:6379')
+
 
 _pubsub_base = "twitter"
 _channel_separator = "."

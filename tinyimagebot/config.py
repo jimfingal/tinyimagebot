@@ -1,7 +1,5 @@
 import os
 
-redis_url = 'redis://localhost:6379'
-
 app_name = "TINY"
 
 consumer_key = os.environ.get(app_name + '_CONSUMER_KEY')

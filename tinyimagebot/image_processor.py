@@ -78,7 +78,7 @@ def process_image(status):
     img_path = save_and_get_image_path(resized)
     return img_path
 
-def post_update(twython, img_path, message):
+def post_update(twython, img_path, message, reply_id):
 
     with open(img_path, 'r') as image_file:
         logging.info("Uploading Image: %s" % img_path)
@@ -97,7 +97,10 @@ def post_update(twython, img_path, message):
         ))
 
         media_id = upload_response['media_id']
-        twython.update_status(status=message, media_ids=[media_id])
+        twython.update_status(
+            status=message,
+            in_reply_to_status_id=reply_id,
+            media_ids=[media_id])
 
 def run(twython, pubsub, status_channel):
 
@@ -118,7 +121,7 @@ def run(twython, pubsub, status_channel):
                 message = get_message(status)
 
                 logging.info("Sending image with message: %s" % message)
-                post_update(twython, img_path, message)
+                post_update(twython, img_path, message, status.tweet_id)
                 logging.info("Success. Deleting temporary file.")
                 os.remove(img_path)
 

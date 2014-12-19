@@ -110,6 +110,14 @@ def post_update(twython, img_path, message, reply_id):
             in_reply_to_status_id=reply_id,
             media_ids=[media_id])
 
+
+def post_done_update(twython, status):
+    user_from = status.sender_screen_name
+    message = ".@" + user_from + " Wow, that image is already really tiny. I think our work here is done."
+    twython.update_status(
+            status=message,
+            in_reply_to_status_id=status.tweet_id)
+
 def run(twython, pubsub, status_channel):
 
     logging.info("Subscribing to channel: %s" % status_channel)
@@ -125,13 +133,32 @@ def run(twython, pubsub, status_channel):
 
             try:
                 
-                img_path = process_image(status)
-                message = get_message(status)
+                #img_path = process_image(status)
 
-                logging.info("Sending image with message: %s" % message)
-                post_update(twython, img_path, message, status.tweet_id)
-                logging.info("Success. Deleting temporary file.")
-                os.remove(img_path)
+                img = get_image_from_url(status.media)
+
+                size_name, size = get_image_size(status)
+                
+                current_size = img.size[0]
+
+                if current_size <= 6:
+                    post_done_update(twython, status)
+                else:
+                    if current_size <= size:
+                        size = current_size / 2
+                        logging.info("Already small, making smaller: %s :: %s" % (current_size, size))
+
+                    logging.info("Size: %s" % size)
+                    resized = resize_image(img, size)
+
+                    img_path = save_and_get_image_path(resized)
+
+                    message = get_message(status)
+
+                    logging.info("Sending image with message: %s" % message)
+                    post_update(twython, img_path, message, status.tweet_id)
+                    logging.info("Success. Deleting temporary file.")
+                    os.remove(img_path)
 
             except Exception as e:
                 logging.exception(e)

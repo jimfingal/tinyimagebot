@@ -1,0 +1,1 @@
+python ./tinyimagebot/run.py

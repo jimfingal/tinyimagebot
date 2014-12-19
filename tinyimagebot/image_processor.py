@@ -70,7 +70,13 @@ def process_image(status):
     logging.info("Processing URL: %s" % status.media)
     logging.info("With hashtags: %s" % status.hashtags)
     img = get_image_from_url(status.media)
+
     size_name, size = get_image_size(status)
+    current_size = img.size[0]
+
+    if current_size <= size:
+        size = current_size / 2
+        logging.info("Already small, making smaller: %s :: %s" % (current_size, size))
 
     logging.info("Size: %s" % size)
     resized = resize_image(img, size)
@@ -97,7 +103,7 @@ def post_update(twython, img_path, message, reply_id):
         ))
 
         media_id = upload_response['media_id']
-        
+
         time.sleep(10)
         twython.update_status(
             status=message,

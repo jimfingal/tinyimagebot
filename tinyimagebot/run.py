@@ -2,7 +2,7 @@ import logging
 from multiprocessing import Process
 
 import redis
-
+from twython import Twython
 import config
 import stream
 import image_processor
@@ -12,8 +12,11 @@ def run_image_processor_from_config(config):
     r = redis.from_url(config.redis_url)
     pubsub = r.pubsub(ignore_subscribe_messages=True)
 
+    twython = Twython(config.consumer_key, config.consumer_secret,
+                    config.access_token, config.access_token_secret)
+
     # Blocks and processes images
-    image_processor.run(pubsub, config.status_channel)
+    image_processor.run(twython, pubsub, config.status_channel)
 
 def run_stream_from_config(config):
 

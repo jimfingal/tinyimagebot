@@ -1,10 +1,12 @@
 from PIL import Image
-from StringIO import StringIO
+from cStringIO import StringIO
 import requests
 import logging
 import time
 import config
 import json
+import random
+import os
 
 from models import SimpleTweet
 
@@ -14,6 +16,8 @@ size_map = {
     'extremelytiny': ('extremelytiny', 10),
     'miniscule': ('miniscule', 1)
 }
+
+image_buffer_filename = "/tmp/tmpprocessed"
 
 def get_image_from_url(url):
     r = requests.get(url)
@@ -26,11 +30,12 @@ def resize_image(img, width):
     img2 = img.resize((width, height), Image.NEAREST)
     return img2
 
-def get_image_output(img):
-    image_io = StringIO.StringIO()
-    img.save(image_io, format='JPEG')
-    image_io.seek(0)  # seeks back to beginning of file for output
-    return image_io
+def save_and_get_image_path(img):
+    rand = random.randint(1, 10000)
+    img_path = "%s%s.png" % (image_buffer_filename, rand)
+    logging.info("Saving temp file to: %s" % img_path)
+    img.save(img_path, format='PNG')
+    return img_path
 
 def should_process_image(status):
     return status.sender_screen_name != config.app_screen_name and \
@@ -49,19 +54,16 @@ def get_hashtag_message(status):
     size_name, size = get_image_size(status)
     return "#" + size_name
 
-
 def get_base_message(status):
     user_from = status.sender_screen_name
     msg = ".@" + user_from + " Your tiny image is ready"
     return msg
-
 
 def get_message(status):
     base_message = get_base_message(status)
     hashtag_message = get_hashtag_message(status)
     message = base_message + ": " + hashtag_message
     return message
-
 
 def process_image(status):
 
@@ -73,13 +75,21 @@ def process_image(status):
     logging.info("Size: %s" % size)
     resized = resize_image(img, size)
 
-    img_out = get_image_output(resized)
-    message = get_message(status)
+    img_path = save_and_get_image_path(resized)
+    return img_path
 
-    return img_out
+def post_update(twython, img_path, message):
 
+    with open(img_path, 'r') as image_file:
+        logging.info("Uploading Image: %s" % img_path)
 
-def run(twitter, pubsub, status_channel):
+        upload_response = twython.upload_media(media=image_file)
+        logging.info("Uploaded as media ID %s. Updating status." % upload_response)
+
+        media_id = upload_response['media_id']
+        twython.update_status(status=message, media_ids=[media_id])
+
+def run(twython, pubsub, status_channel):
 
     logging.info("Subscribing to channel: %s" % status_channel)
     pubsub.subscribe(status_channel)
@@ -88,12 +98,23 @@ def run(twitter, pubsub, status_channel):
     for message in pubsub.listen():
         logging.info("Received message. Loading into status.")
         status = SimpleTweet(json.loads(message['data']))
-
+        logging.info("Message: %s" % status.text)
         if should_process_image(status):
             logging.info("Processing image!")
-            process_image(status)
 
+            try:
+                
+                img_path = process_image(status)
+                message = get_message(status)
+
+                logging.info("Sending image with message: %s" % message)
+                post_update(twython, img_path, message)
+                logging.info("Success. Deleting temporary file.")
+                os.remove(img_path)
+
+            except Exception as e:
+                logging.exception(e)
         else:
             logging.info("Not processing image")
 
-        time.sleep(5)
+        time.sleep(60)

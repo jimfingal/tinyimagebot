@@ -1,1 +1,1 @@
-python ./tinyimagebot/run.py
+worker: python ./tinyimagebot/run.py

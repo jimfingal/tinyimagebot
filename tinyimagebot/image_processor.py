@@ -97,6 +97,8 @@ def post_update(twython, img_path, message, reply_id):
         ))
 
         media_id = upload_response['media_id']
+        
+        time.sleep(10)
         twython.update_status(
             status=message,
             in_reply_to_status_id=reply_id,

@@ -81,7 +81,7 @@ def post_done_update(twython, status):
 def get_message(status):
 
     user_from = status.sender_screen_name
-    base_message = ".@" + user_from + " Your tiny image is ready"
+    base_message = ". @" + user_from + " Your tiny image is ready"
 
     size_name, size = imageproc.get_image_size(status)
     hashtag_message = "#" + size_name

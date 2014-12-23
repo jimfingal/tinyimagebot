@@ -6,7 +6,7 @@ import config
 import os
 import time
 
-def run(twython, pubsub, status_channel):
+def run(twython, pubsub, status_channel, wait_time=60):
 
     logging.info("Subscribing to channel: %s" % status_channel)
     pubsub.subscribe(status_channel)
@@ -16,20 +16,20 @@ def run(twython, pubsub, status_channel):
 
         logging.info("Received message. Loading into status.")
         status = SimpleTweet(json.loads(message['data']))
-        logging.info("Message: %s" % status.text)
+        logging.info("Examining message with text: %s" % status.text)
         
         if should_process_image(status):
-            logging.info("Processing image!")
+            logging.info("Passed muster, processing image!")
 
             try:
                 process_status(twython, status)
-
             except Exception as e:
                 logging.exception(e)
-        else:
-            logging.info("Not processing image")
 
-        time.sleep(120)
+            logging.info("Sleeping for %s seconds" % wait_time)
+            time.sleep(wait_time)
+        else:
+            logging.info("Didn't pass muster, not processing image.")
 
 
 def should_process_image(status):

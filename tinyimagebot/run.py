@@ -10,13 +10,12 @@ import tinyifier
 def run_image_processor_from_config(config):
     
     r = redis.from_url(config.redis_url)
-    pubsub = r.pubsub(ignore_subscribe_messages=True)
 
     twython = Twython(config.consumer_key, config.consumer_secret,
                     config.access_token, config.access_token_secret)
 
     # Blocks and processes images
-    tinyifier.run(twython, pubsub, config.status_channel)
+    tinyifier.run(twython, r, config.status_channel)
 
 def run_stream_from_config(config):
 

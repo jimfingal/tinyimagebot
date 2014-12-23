@@ -5,10 +5,14 @@ import json
 import config
 import os
 import time
+import arrow
 
-def run(twython, pubsub, status_channel, wait_time=300):
+
+# TODO: check how many images in an exchange. Limit after certain point.
+def run(twython, r, status_channel, wait_time=90):
 
     logging.info("Subscribing to channel: %s" % status_channel)
+    pubsub = r.pubsub(ignore_subscribe_messages=True)
     pubsub.subscribe(status_channel)
 
     logging.info("Starting to listen to messages")
@@ -21,10 +25,15 @@ def run(twython, pubsub, status_channel, wait_time=300):
         if should_process_image(status):
             logging.info("Passed muster, processing image!")
 
-            try:
-                process_status(twython, status)
-            except Exception as e:
-                logging.exception(e)
+            if user_not_rate_limited(r, status):
+                try:
+                    process_status(twython, status)
+                except Exception as e:
+                    logging.exception(e)
+            else:
+                logging.info("We have been rate limited for user %s, putting back in queue." \
+                    % status.sender_screen_name)
+                r.publish(status_channel, message)
 
             logging.info("Sleeping for %s seconds" % wait_time)
             time.sleep(wait_time)
@@ -36,6 +45,44 @@ def should_process_image(status):
     return status.sender_screen_name != config.app_screen_name and \
             status.media is not None
 
+
+def user_not_rate_limited(r, status, limit=15, limit_expiration=21600):
+    """ Maintains a cache so we can only handle a maximum of N exchanges with a user per day.
+        Returns True if we can proceed, false if we are rate limited. """
+    user_from = status.sender_screen_name
+
+    key = get_rate_key(user_from)
+
+    counter = r.get(key)
+
+    # If we don't have a key, increment it and expire the key in a day
+    logging.info("User rate limit key == %s / %s" % (counter, limit))
+
+    if counter is None:
+        logging.info("First message in a while from user, expiring key in %s seconds" % limit_expiration)
+
+        with r.pipeline() as pipe:
+            pipe.incr(key)
+            pipe.expire(key, limit_expiration)
+            pipe.execute()
+        return True
+
+    # If we're over the limit, rate limit thigns
+    elif counter > limit:
+        return False
+
+    # Otherwise, increment and proceed
+    else:
+        r.incr(key)
+        return True
+
+def get_rate_key(username):
+    now = arrow.get()
+    month = now.month
+    day = now.day
+
+    key = "%s%s%s" % (username, month, day)
+    return key
 
 def process_status(twython, status):
 

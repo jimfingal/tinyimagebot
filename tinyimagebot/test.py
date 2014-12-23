@@ -1,6 +1,8 @@
 import unittest2
 from models import SimpleTweet
 import image_processor
+import redis
+import tinyifier
 
 class TestTweetModel(unittest2.TestCase):
 
@@ -321,6 +323,14 @@ class TestMessageGeneration(unittest2.TestCase):
         status = MockStatus(hashtag='verytiny', screen_name='testname')
         msg = image_processor.get_message(status)
         self.assertEqual(msg, ".@testname Your tiny image is ready: #verytiny")
+
+
+class TestRateLimits(unittest2.TestCase):
+
+    def setUp(self):
+      self.r = redis.from_url('redis://localhost:6379')
+
+
 
 if __name__ == '__main__':
     unittest2.main()

@@ -6,7 +6,7 @@ import config
 import os
 import time
 
-def run(twython, pubsub, status_channel, wait_time=60):
+def run(twython, pubsub, status_channel, wait_time=120):
 
     logging.info("Subscribing to channel: %s" % status_channel)
     pubsub.subscribe(status_channel)

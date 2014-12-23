@@ -3,6 +3,7 @@ from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler
 from tweepy import Stream
 import logging
+import time
 
 class RawListener(StreamListener):
     ''' Overrides on_data to pass raw json instead of parsing status objects '''
@@ -48,13 +49,17 @@ class RawListener(StreamListener):
         logging.error('Received error with status code: %s' % status_code)
         return False
 
+    def on_limit(self):
+        logging.error('Limit reached')
+        return False
+
     def on_timeout(self):
         logging.error('Stream Timed out')
-        return
+        return False
 
     def on_disconnect(self, notice):
         logging.error('Stream Disconnected: %s' % notice)
-        return
+        return False
 
     def on_warning(self, notice):
         """Called when a disconnection warning message arrives"""
@@ -76,11 +81,48 @@ class RedisPublishListener(RawListener):
         self.redis.publish(self.status_channel, tweet)
         return True
 
+
+def run_forever_with_backoff(func, base_backoff=60, backoff_multiplier=2, reset_time=3600):
+    last_attempt = time.time()
+    current_backoff = base_backoff
+
+    while True:
+
+        last_attempt = time.time()
+
+        try:
+            func()
+        except Exception as e:
+            logging.exception(e)
+
+
+        now = time.time()
+
+        diff = now - last_attempt
+
+        print "It's been %s since last run" % diff
+        # If we recently crashed, back off exponentially, else reset
+        if diff < reset_time:
+            current_backoff = current_backoff * backoff_multiplier
+        else:
+            logging.info("It's been more than %s seconds, resetting backoff to %s" % (reset_time, base_backoff))
+            current_backoff = base_backoff
+
+        logging.error("Something went wrong, backing off for %s seconds before connecting." % current_backoff)
+        time.sleep(current_backoff)
+
+
 def run(consumer_key, consumer_secret, access_token, access_token_secret, listener):
-    auth = OAuthHandler(consumer_key, consumer_secret)
-    auth.set_access_token(access_token, access_token_secret)
-    stream = Stream(auth, listener)
-    stream.userstream(_with='user')
+
+
+    def enclosed_func():
+        auth = OAuthHandler(consumer_key, consumer_secret)
+        auth.set_access_token(access_token, access_token_secret)
+        stream = Stream(auth, listener)
+        logging.info("Attempting to connect the stream.")
+        stream.userstream(_with='user')
+
+    run_forever_with_backoff(enclosed_func)
 
 
 if __name__ == "__main__":

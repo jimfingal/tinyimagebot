@@ -71,7 +71,9 @@ class RedisPublishListener(RawListener):
 
     def on_status(self, data):
         """Called when a new status arrives"""
-        self.redis.publish(self.status_channel, json.dumps(data))
+        logging.info("Received tweet: %s" % data['text'])
+        tweet = json.dumps(data)
+        self.redis.publish(self.status_channel, tweet)
         return True
 
 def run(consumer_key, consumer_secret, access_token, access_token_secret, listener):

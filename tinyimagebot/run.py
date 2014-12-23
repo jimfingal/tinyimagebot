@@ -5,7 +5,7 @@ import redis
 from twython import Twython
 import config
 import stream
-import image_processor
+import tinyifier
 
 def run_image_processor_from_config(config):
     
@@ -16,7 +16,7 @@ def run_image_processor_from_config(config):
                     config.access_token, config.access_token_secret)
 
     # Blocks and processes images
-    image_processor.run(twython, pubsub, config.status_channel)
+    tinyifier.run(twython, pubsub, config.status_channel)
 
 def run_stream_from_config(config):
 

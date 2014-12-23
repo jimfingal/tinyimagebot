@@ -33,7 +33,7 @@ def run(twython, r, status_channel, wait_time=90):
             else:
                 logging.info("We have been rate limited for user %s, putting back in queue." \
                     % status.sender_screen_name)
-                r.publish(status_channel, message)
+                r.publish(status_channel, json.dumps(message['data']))
 
             logging.info("Sleeping for %s seconds" % wait_time)
             time.sleep(wait_time)
@@ -68,7 +68,7 @@ def user_not_rate_limited(r, status, limit=15, limit_expiration=21600):
         return True
 
     # If we're over the limit, rate limit thigns
-    elif counter > limit:
+    elif int(counter) > limit:
         return False
 
     # Otherwise, increment and proceed

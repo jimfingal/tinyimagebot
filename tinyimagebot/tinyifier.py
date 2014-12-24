@@ -33,7 +33,7 @@ def run(twython, r, status_channel, wait_time=90):
             else:
                 logging.info("We have been rate limited for user %s, putting back in queue." \
                     % status.sender_screen_name)
-                r.publish(status_channel, json.dumps(message['data']))
+                r.publish(status_channel, message['data'])
 
             logging.info("Sleeping for %s seconds" % wait_time)
             time.sleep(wait_time)
